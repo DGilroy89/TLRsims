@@ -1,0 +1,15 @@
+gmacro
+DanniAncStats
+# Runs after the DanniSim and calculated the mean and StDev of H and 
+# Nr of haplotypes of the ancestral population.
+
+copy c12 c60;
+use c10=20000:99999999.
+dotpl c60
+desc c60
+copy c11 c60;
+use c10=20000:99999999.
+dotpl c60
+desc c60
+
+endmacro

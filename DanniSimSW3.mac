@@ -1,0 +1,254 @@
+Gmacro
+DanniSimSW3
+Note Simulating a gene with known number of bp in 
+Note an ancestral population of a given Ne, and a known 
+Note population bottleneck scenario.
+Note  
+Note The model assumes a mutation rate has been constant 
+Note over time. 
+Note
+Note Balancing selection can however differ between
+Note the ancestral and bottlenecked population!
+Note
+Note The macro first simulates the haplotypes of the 
+Note ancestral population that is in a mutation-selection-drift 
+Note equilibrium. It then simulates the bottleneck with either 
+Note the seychelles warbler or an user-defined scenario.
+Note 
+Note In this new version the most plausible bottleneck scenario
+Note for seychelles warblers can be chosen, which consists of:
+Note 22 generations of Ne=50, followed by 3 generations of
+Note population expansion with Ne=100, 150 and 200, and 
+Note finally, 9 generations with Ne=250.
+Note 
+Note After the burn-in, DanniBottleSW3 samples a random 
+Note generation (t>1000) to account for variation in ancestral 
+Note (pre-bottleneck) population. THIS IS IMPORTANT!
+Note 
+Note Input: 1)  Ancestral Ne
+Note          2)  Size of amplicon (in bp)
+Note          3)  Mutation rate (in bp/generations)
+Note          4)  Demographic bottleneck scenario (nr. of generations and Ne)
+Note          5a)Selection coefficient S (for balancing selection)
+Note          5b)Selection coefficient Sbottle (selection during bottleneck)  
+Note          6)  If testing neutral evolution, the observed heterozygosity
+Note          7)  Number of samples genotyped for the gene
+Note 
+Note Output: Simulated H and nr of haplotypes in c20-c26 
+Note In C31 + C32 the allele frequencies.
+Note The data to copy to SigmaPlot are in c50-c56.
+Note
+
+Erase c1-c1000
+Erase k1-k1000
+
+name k4 'Sims' k5 'Ngenotyped' k7 '2xNgenotyped'
+name k101 'Na' k102 '2Na' k103 'Amplicon size' k104 'Exponent' k105 'Mu'
+name k106 'Nbottle' k107 '2xNbottle' k108 't-bottle' k109 'S' k110 't' k119 'Sbottle'
+name k901 'Observed H' k902 'SW scenario?'
+
+name c10 'Generations' c11 'H' c12 'Nr of Haplotypes'
+name c31 'Generation (alleles)' c32 'Allele freq.'
+
+Note What is the size of the ancestral population (Na)? 
+set c999;
+file 'terminal';
+nobs = 1.
+copy c999 'Na'
+let '2Na'=2*'Na'
+Note
+
+Note What is the amplicon size of the genes (in bp)? 
+set c999;
+file 'terminal';
+nobs = 1.
+copy c999 'Amplicon size'
+Note
+
+Note What is the mutation rate (in power of 10; e.g. -8)? 
+set c999;
+file 'terminal';
+nobs = 1.
+copy c999 'Exponent'
+let 'Mu'='Amplicon size'*(10**'Exponent')		# 'Mu': probability of a mutation per amplicon per generation
+Note
+
+Note Do you want to run the most plausible bottleneck scenario
+Note for the seychelles warbler or a user-defined scenario? 
+Note (Seychelles warbler = 1; user-defined = 0). 
+set c999;
+file 'terminal';
+nobs = 1.
+copy c999 'SW scenario?'
+Note
+
+if 'SW scenario?'=0
+  Note What is the bottleneck size (Nbottle)? 
+  set c999;
+  file 'terminal';
+  nobs = 1.
+  copy c999 'Nbottle'
+  let '2xNbottle'=2*'Nbottle'
+  Note
+  
+  Note What is the bottleneck duration (in generations)? 
+  set c999;
+  file 'terminal';
+  nobs = 1.
+  copy c999 't-bottle'
+  Note
+else
+  name c30 'SW bottleneck scenario'
+  Set c30
+  1( 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 50 100 150 200 250 250 250 250 250 250 250 250 250 )1
+  End.
+endif
+
+Note What is the selection coefficient (S) in ancestral population? 
+set c999;
+file 'terminal';
+nobs = 1.
+copy c999 'S'
+Note
+
+Note What is the selection coefficient (Sbottle) during/after the bottleneck? 
+Note Danni - please use 'Sbottle'=0 for now! 
+set c999;
+file 'terminal';
+nobs = 1.
+copy c999 'Sbottle'
+Note
+
+Note How many generations burn-in (t)? (t ranges between 1,000 and 100,000)
+set c999;
+file 'terminal';
+nobs = 1.
+copy c999 't'
+Note
+
+Note How many simulations of bottleneck (Sims)? (Sims ~1,000)
+set c999;
+file 'terminal';
+nobs = 1.
+copy c999 'Sims'
+Note
+
+Note How many individuals were genotyped for the gene? (Ngenotyped)
+set c999;
+file 'terminal';
+nobs = 1.
+copy c999 'Ngenotyped'
+let '2xNgenotyped'=2*'Ngenotyped'
+
+Note Do you want to save the burn-in? (Yes = 1; No = 0)
+set c999;
+file 'terminal';
+nobs = 1.
+copy c999 k900
+If k900=1
+  Note  
+  Note Please make sure you have already changed the Minitab file name 
+  Note at the end of the Notepad file DanniSim.mac. 
+  Note If you have not, type exit, otherwise type R to resume.
+  Pause
+endif
+
+If 'Sbottle'=0
+  Note What was the observed H of this gene? 
+  set c999;
+  file 'terminal';
+  nobs = 1.
+  copy c999 'Observed H'
+Endif
+Brief 0
+
+# BURN IN STAGE
+
+# Create a monomorphic ancestral population of 2Na haplotypes
+Set c1
+  1( 1 : 1 / 1 )'2Na'
+  End.
+
+# Make a loop for t generations
+do k1=1:'t'
+  
+  # Add mutations every generation
+  Random '2Na' c2;
+  Uniform 0.0 1.0.
+  code ('Mu':1) 0 (0:'Mu') 1 c2 c2
+  let c2=(c2*k1)/100000
+  let c1=c1+c2
+  
+  # Generate genotypes (diploids)
+  copy c1 c3;
+  use 1:'Na'.    
+  copy c1 c4;
+  omit 1:'Na'.
+  
+  # Perform balancing selection
+  let c5=c3=c4
+  let c5=1-(c5*'S')			# Overdominance selection: all homozygotes get fitness w=1-S
+  Random 'Na' c6;
+  Uniform 0.0 1.0.
+  let c6=c5>c6			# Individuals with w<random number die
+  copy c3-c5 c3-c5;
+  omit c6=0.
+  stack c3 c4 c7			# c7: entire gene pool of gametes
+
+  # Perform drift (sampling randomly)
+  sample '2Na' c7 c1;
+  replace.
+  
+  # Calculate ancestral H every 100 generations:
+  let k1000=(round(k1/100))=(k1/100)
+  if k1000=1
+      erase c100
+      copy c1 c8
+    mlabel 1
+      let k999=min(c8)
+      copy c8 c9;
+      use c8=k999.
+      let k998=N(c9)
+      stack c100 k998 c100
+      copy c8 c8;
+      omit c8=k999.
+      N c8 k1000
+      if k1000>0
+    goto 1
+      endif
+    let c99=(c100/c100)*k1
+    stack (c31 c32) (c99 c100) (c31 c32)
+    let c100=(c100/(Sum(c100)))**2
+    let k997=1-sum(c100)		# H = 1 - sum(Pi)^2
+    let k996=N(c100)		# Number of hapotypes
+    stack (c10 c11 c12) (k1 k997 k996) (c10 c11 c12)
+  endif
+enddo
+
+Brief 1
+
+# Plot the mean(5-95%CI) H over time and compare to observed H
+
+Plot 'H'*'Generations';
+  Connect;
+  Minimum 2 0;
+  Maximum 2 1;
+  ScFrame;
+  ScAnnotation.
+Plot 'Nr of Haplotypes'*'Generations';
+  Connect;
+  Minimum 2 0;
+  ScFrame;
+  ScAnnotation.
+
+# CHANGE THE FILE NAME FOR THE BURN-IN HERE BEFORE RUNNING THE MACRO!
+
+if k900=1
+   Save  "C:\Users\Cock\Desktop\Test3.MPJ";
+   Project;
+   Replace.
+endif
+
+%DanniBottleSW3
+
+Endmacro

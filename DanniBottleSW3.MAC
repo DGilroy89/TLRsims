@@ -1,0 +1,228 @@
+Gmacro
+DanniBottleSW3
+# Runs after DanniSimSW3.mac
+
+Brief 0
+
+erase c14-c29 c33-c1000
+
+name c14 'Simulation' c15 'Generation' c16 'Hbottle' c17 'Nr of Haplotypes bottle'
+name c20 'Post-bottleneck generation'
+name c21 'Mean(H)' c22 '5% H' c23 '95% H'
+name c24 'Mean(Nr Haplo)' c25 '5% Nr Haplo' c26 '95% Nr Haplo'
+name c28 'The generation' c29 'Possible generations' c34 'Alleles in generation'
+
+do k3=1:'Sims'
+  if 'SW scenario?'=1
+    let 't-bottle'=34
+  endif
+
+  # Determine which generation you want to sample the ancestral gene pool
+  Set c29
+  1( 1000 : 't' / 100 )1
+  End.
+  sample 1 c29 c28
+  let k1000=sum(c28)
+  copy c32 c33;
+  use c31=k1000.
+  
+  # Then "untally" the alleles in c34 ('Alleles in generation') and sample '2Na' from this gene pool.
+  let k35=0
+  delete 1:100000 'Alleles in generation' 'Alleles in generation'
+  mlabel 3
+    let k35=k35+1
+    copy c33 c1000;
+    use 1.
+    let k1000=sum(c1000)
+    Set c999
+    k1000( k35 : k35 / 1 )1
+    End.
+    stack 'Alleles in generation' c999 'Alleles in generation'
+    copy c33 c33;
+    omit 1.
+    count c33 k33
+    if k33>0
+  goto 3
+    endif
+  Sample '2Na' 'Alleles in generation' c107.
+  
+  # Make a loop for t-bottle generations 
+  do k1=1:'t-bottle'
+
+    if 'SW scenario?'=1
+      copy c30 c1000;
+      use k1.
+      let '2xNbottle'=2*sum(c1000)
+      let 'Nbottle'=sum(c1000)
+    endif
+      
+    # Perform drift (sampling randomly)
+    sample '2xNbottle' c107 c101;
+    replace.
+
+    # Add mutations every generation
+    Random '2xNbottle' c102;
+    Uniform 0.0 1.0.
+    code ('Mu':1) 0 (0:'Mu') 1 c102 c102
+    let c102=(c102*k1)/100000
+    let c101=c101+c102
+    
+    # Generate genotypes (diploids)
+    copy c101 c103;
+    use 1:'Nbottle'.    
+    copy c101 c104;
+    omit 1:'Nbottle'.
+    
+    # Perform balancing selection	# IN DANNIBOTTLESW3, SELECTION COEFFICIENT CAN BE DIFFERENT FROM ANCESTRAL S!!
+    let c105=c103=c104
+    let c105=1-(c105*'Sbottle')		# Overdominance selection: all homozygotes get fitness w=1-Sbottle
+    Random 'Nbottle' c106;
+    Uniform 0.0 1.0.
+    let c106=c105>c106		# Individuals with w<random number die
+    copy c103-c105 c103-c105;
+    omit c106=0.
+    stack c103 c104 c107		# c107: entire gene pool of gametes
+    
+    # Calculate bottleneck H and nr of haplotypes every generation of every simulation
+    # in a sample of 'Ngenotyped' alleles
+      if '2xNgenotyped'>'2xNbottle'
+        sample '2xNgenotyped' c101 c108;
+        replace.
+      else
+        sample '2xNgenotyped' c101 c108.
+      endif
+      erase c100
+    mlabel 2
+      let k999=min(c108)
+      copy c108 c109;
+      use c108=k999.
+      let k998=N(c109)
+      stack c100 k998 c100
+      copy c108 c108;
+      omit c108=k999.
+      N c108 k1000
+      if k1000>0
+    goto 2
+      endif
+      let c100=(c100/(Sum(c100)))**2
+      let k997=1-sum(c100)		# H = 1 - sum(Pi)^2
+      let k996=N(c100)		# Number of hapotypes
+      stack (c14 c15 c16 c17) (k3 k1 k997 k996) (c14 c15 c16 c17)
+  enddo
+enddo
+
+# In order to reject the null model of neutral evolution (with Sbottle=0 only), check where the
+# observed H falls in the simulated H values:
+if 'Sbottle'=0
+  Brief 1
+  name k999 'p-value'
+  copy 'Hbottle' c1000;
+  use 'Generation'='t-bottle'.
+  Sort c1000 c1000;
+  By c1000;
+  Descending c1000.
+  Set c999
+  1( 1 : 'Sims' / 1 )1
+  End.
+  let c999=c999/'Sims'
+  copy c999 c1000 c999 c1000;
+  omit c1000=0:'Observed H'.
+  N(c999) k999
+  if k999>0
+    let k999=max(c999)
+  else
+    let k999=1/'Sims'
+  endif
+  if k999<0.05
+    Note Neutral evolution can be rejected for this gene with a probability:
+    prin k999
+  else
+    Note Neutral evolution cannot be rejected for this gene
+  endif  
+  Note
+  Brief 0
+endif
+
+# Calculate the mean and 5-95%CI of H and Nr of Haplotypes for each post-bottleneck generation sample
+Set c20
+  1( 1 : 't-bottle' / 1 )1
+  End.
+let k51=round('Sims'*0.5)
+let k52=round('Sims'*0.05)
+let k53=round('Sims'*0.95)
+do k6=1:'t-bottle'
+  copy c16 c17 c110 c111;
+  use 'Generation'=k6.
+  sort c110 c110
+  sort c111 c111
+  
+  copy c110 c112;
+  use k51.
+  stack c21 c112 c21
+  copy c110 c112;
+  use k52.
+  stack c22 c112 c22
+  copy c110 c112;
+  use k53.
+  stack c23 c112 c23
+  
+  copy c111 c112;
+  use k51.
+  stack c24 c112 c24
+  copy c111 c112;
+  use k52.
+  stack c25 c112 c25
+  copy c111 c112;
+  use k53.
+  stack c26 c112 c26
+  
+enddo
+
+Brief 1
+Plot 'Mean(H)'*'Post-bottleneck generation' '5% H'*'Post-bottleneck generation' '95% H'*'Post-bottleneck generation';
+  Symbol;
+  Overlay;
+  ScFrame;
+  ScAnnotation;
+  Axis 1;
+  Axis 2;
+    Label "H".
+
+Plot 'Mean(Nr Haplo)'*'Post-bottleneck generation' '5% Nr Haplo'*'Post-bottleneck generation' '95% Nr Haplo'*'Post-bottleneck generation';
+  Symbol;
+  Overlay;
+  Minimum 2 0;
+  ScFrame;
+  ScAnnotation;
+  Axis 1;
+  Axis 2;
+    Label "Nr of Haplotypes".
+
+# For the Sigmaplot files
+erase c50-c1000
+name c50 'Time' c51 'Mean of H*' c52 '5%CI H' c53 '95%CI H'
+name c54 'Mean Nr of Haplotypes' c55 '5%CI Nr of Haplotypes' c56 '95%CI Nr of Haplotypes'
+
+let c1000='Post-bottleneck generation'+(Max('Generations'))
+stack c10 c1000 c50
+let c51=c11
+code (0:9999999) '*'  c51 c52
+let c53=c52
+
+let c54=c12
+let c55=c52
+let c56=c52
+
+stack c51 c21 c51
+stack c52 c22 c52
+stack c53 c23 c53
+stack c54 c24 c54
+stack c55 c25 c55
+stack c56 c26 c56
+
+let c52=c52-c51
+let c53=c53-c51
+let c55=c55-c54
+let c56=c56-c54
+
+Endmacro
